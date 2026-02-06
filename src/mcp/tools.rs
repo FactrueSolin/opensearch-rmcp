@@ -1,10 +1,10 @@
+use futures::future::join_all;
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, Content, ServerInfo, ServerCapabilities, Implementation},
+    model::{CallToolResult, Content, Implementation, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
 };
-use futures::future::join_all;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,6 @@ pub enum SearchType {
     General,
     News,
     Images,
-    Videos,
     It,
     Science,
 }
@@ -30,7 +29,6 @@ impl SearchType {
             SearchType::General => None,
             SearchType::News => Some("news"),
             SearchType::Images => Some("images"),
-            SearchType::Videos => Some("videos"),
             SearchType::It => Some("it"),
             SearchType::Science => Some("science"),
         }
@@ -41,7 +39,6 @@ impl SearchType {
             SearchType::General => "general",
             SearchType::News => "news",
             SearchType::Images => "images",
-            SearchType::Videos => "videos",
             SearchType::It => "it",
             SearchType::Science => "science",
         }
@@ -175,8 +172,9 @@ impl SearxngTools {
                         .error
                         .or_else(|| Some(format!("structured serialization failed: {}", err))),
                 });
-                let fallback_text = serde_json::to_string(&fallback)
-                    .unwrap_or_else(|_| "{\"success\":false,\"error\":\"fallback serialization failed\"}".to_string());
+                let fallback_text = serde_json::to_string(&fallback).unwrap_or_else(|_| {
+                    "{\"success\":false,\"error\":\"fallback serialization failed\"}".to_string()
+                });
                 CallToolResult::success(vec![Content::text(fallback_text)])
             }
         }
@@ -199,7 +197,10 @@ impl ServerHandler for SearxngTools {
 
 #[tool_router]
 impl SearxngTools {
-    #[tool(name = "opensearch", description = "统一搜索工具：按 search_type 选择类别，支持 queries 并发查询")]
+    #[tool(
+        name = "opensearch",
+        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；it（信息技术搜索）；science（学术搜索）。可同时搜索多个关键词"
+    )]
     async fn opensearch(
         &self,
         params: Parameters<OpenSearchParams>,

@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  searxng-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openperplexity/searxng-mcp:latest
+    container_name: searxng-mcp
+    restart: unless-stopped
+    ports:
+      - "18001:8000"
+    env_file:
+      - .env
+    environment:
+      # 容器内监听地址，确保端口映射可用
+      MCP_BIND: 0.0.0.0:8000
+
