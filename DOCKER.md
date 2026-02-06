@@ -99,6 +99,16 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+为确保 `Dockerfile` 中的 BuildKit 缓存挂载（`RUN --mount=type=cache,...`）生效，建议显式启用 BuildKit：
+
+```bash
+DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose up -d --build
+```
+
+说明：
+- Docker Desktop / Docker Engine 新版本通常默认启用 BuildKit；
+- 在 CI 或老环境中，建议按上面的命令显式开启，避免缓存挂载失效。
+
 停止并移除容器：
 
 ```bash
@@ -133,4 +143,3 @@ docker compose logs -f
 
 - 可在网络较好的环境先构建镜像，再分发
 - 结合 CI 缓存 Docker 层与 Cargo 依赖缓存
-
