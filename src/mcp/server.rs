@@ -7,7 +7,11 @@ use rmcp::transport::streamable_http_server::{
 };
 use tokio_util::sync::CancellationToken;
 
-use super::{auth::{AuthState, auth_middleware}, config::McpConfig, tools::SearxngTools};
+use super::{
+    auth::{AuthState, auth_middleware},
+    config::McpConfig,
+    tools::SearxngTools,
+};
 use crate::searxng::client::SearxngClient;
 
 async fn health_check() -> &'static str {
@@ -32,7 +36,10 @@ pub async fn serve(config: McpConfig) -> Result<()> {
     let mcp_router = if auth_state.enabled() {
         Router::new()
             .nest_service("/mcp", mcp_service)
-            .layer(middleware::from_fn_with_state(auth_state.clone(), auth_middleware))
+            .layer(middleware::from_fn_with_state(
+                auth_state.clone(),
+                auth_middleware,
+            ))
     } else {
         Router::new().nest_service("/mcp", mcp_service)
     };

@@ -1,4 +1,3 @@
-
 use reqwest::Client;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -69,7 +68,10 @@ pub async fn search_images(keywords: &[String], limit: usize) -> ImageSearchResp
         let base_url = base_url.clone();
         let limit = limit;
         join_set.spawn(async move {
-            (index, search_single(&client, &base_url, &keyword, limit).await)
+            (
+                index,
+                search_single(&client, &base_url, &keyword, limit).await,
+            )
         });
     }
 
@@ -113,11 +115,7 @@ async fn search_single(
     let url = format!("{}/search", base_url.trim_end_matches('/'));
     let response = match client
         .get(url)
-        .query(&[
-            ("q", keyword),
-            ("categories", "images"),
-            ("format", "json"),
-        ])
+        .query(&[("q", keyword), ("categories", "images"), ("format", "json")])
         .send()
         .await
     {
@@ -157,26 +155,22 @@ async fn search_single(
         .results
         .into_iter()
         .filter_map(|item| {
-            let image_url = item
-                .img_src
-                .and_then(|value| {
-                    let trimmed = value.trim();
-                    if trimmed.is_empty() {
-                        None
-                    } else {
-                        Some(trimmed.to_string())
-                    }
-                });
-            let description = item
-                .title
-                .and_then(|value| {
-                    let trimmed = value.trim();
-                    if trimmed.is_empty() {
-                        None
-                    } else {
-                        Some(trimmed.to_string())
-                    }
-                });
+            let image_url = item.img_src.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            });
+            let description = item.title.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            });
             match (image_url, description) {
                 (Some(image_url), Some(description)) => Some(ImageSearchItem {
                     image_url,

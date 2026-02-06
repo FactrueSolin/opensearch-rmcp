@@ -17,7 +17,10 @@ fn check_required_env(key: &str) -> Option<String> {
         Ok(value) => {
             let trimmed = value.trim();
             if trimmed.is_empty() {
-                println!("cargo:warning={} environment variable is set but empty", key);
+                println!(
+                    "cargo:warning={} environment variable is set but empty",
+                    key
+                );
                 None
             } else {
                 Some(trimmed.to_string())
@@ -96,7 +99,11 @@ fn curl_status_code(url: &str, auth_header: Option<&str>) -> Result<String, Stri
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("curl exited with status {:?}: {}", output.status.code(), stderr.trim()));
+        return Err(format!(
+            "curl exited with status {:?}: {}",
+            output.status.code(),
+            stderr.trim()
+        ));
     }
 
     let code = String::from_utf8_lossy(&output.stdout).trim().to_string();

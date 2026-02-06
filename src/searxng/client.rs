@@ -2,7 +2,10 @@ use anyhow::{Context, Result};
 use reqwest::Client;
 use tracing::debug;
 
-use super::{mapper::map_result_item, types::{SearchToolResponse, SearxngResponse}};
+use super::{
+    mapper::map_result_item,
+    types::{SearchToolResponse, SearxngResponse},
+};
 use crate::rerank::RerankClient;
 
 #[derive(Clone)]
@@ -76,8 +79,7 @@ impl SearxngClient {
             if results.len() <= limit {
                 debug!(
                     results_count = results.len(),
-                    limit,
-                    "Skipping rerank: results count is within limit"
+                    limit, "Skipping rerank: results count is within limit"
                 );
             } else {
                 // 构造待排序文档：将 URL 与 description 组合，给 rerank 更多上下文
@@ -91,8 +93,7 @@ impl SearxngClient {
                 // 模板：用户使用搜索引擎搜索，正在进行{search_type}的类型的搜索，搜索目标是"{user_query}"
                 let rerank_query = format!(
                     "用户使用搜索引擎搜索，正在进行{}的类型的搜索，搜索目标是\"{}\"",
-                    category_key,
-                    query
+                    category_key, query
                 );
 
                 // 调用重排序 API

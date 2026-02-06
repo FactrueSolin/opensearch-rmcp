@@ -19,7 +19,7 @@ impl RerankClient {
     pub fn new() -> Result<Self> {
         let api_key = std::env::var("SILICONFLOW_API_KEY")
             .context("SILICONFLOW_API_KEY environment variable not set")?;
-        
+
         Ok(Self {
             api_key,
             http: Client::new(),
@@ -35,11 +35,11 @@ impl RerankClient {
     }
 
     /// 对文档进行重排序
-    /// 
+    ///
     /// # 参数
     /// - `query`: 查询文本
     /// - `documents`: 待排序的文档列表
-    /// 
+    ///
     /// # 返回
     /// 返回按相关性得分排序的结果列表（从高到低）
     pub async fn rerank(&self, query: &str, documents: Vec<String>) -> Result<Vec<RerankResult>> {
