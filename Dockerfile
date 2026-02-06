@@ -1,27 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
-FROM rust:1.88-bookworm AS builder
+FROM rust:1.85-bookworm AS builder
 
 WORKDIR /app
 
 # 先复制清单文件，提升依赖缓存命中率
 COPY Cargo.toml Cargo.lock ./
-
-# 预拉取依赖，配合 BuildKit cache mount 复用 crates 索引/源码
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo fetch --locked
-
-# 再复制源码，避免业务代码改动导致依赖层失效
-COPY build.rs ./
 COPY src ./src
 
 # 构建目标二进制：searxng_mcp
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target \
-    cargo build --release --locked --bin searxng_mcp \
-    && cp /app/target/release/searxng_mcp /app/searxng_mcp
+RUN cargo build --release --bin searxng_mcp
 
 FROM debian:bookworm-slim AS runtime
 
@@ -32,7 +20,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/searxng_mcp /usr/local/bin/searxng_mcp
+COPY --from=builder /app/target/release/searxng_mcp /usr/local/bin/searxng_mcp
 
 # 容器内默认监听 8000，确保可被宿主机访问
 ENV MCP_BIND=0.0.0.0:8000

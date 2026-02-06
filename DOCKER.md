@@ -83,12 +83,12 @@ docker logs -f searxng-mcp
 
 以下变量参考 `.env.example`：
 
-| 变量名 | 必填 | 默认值 | 说明 |
-|---|---|---|---|
-| `SEARXNG_URL` | 是 | 无 | SearxNG 服务地址，例如 `http://10.26.0.12:8888` |
-| `MCP_BIND` | 否 | `127.0.0.1:8000`（程序默认） | MCP HTTP 服务监听地址；容器中建议设为 `0.0.0.0:8000` |
-| `MCP_AUTH_TOKEN` | 否 | 无 | MCP 鉴权 token，设置后请求需携带 `Authorization: Bearer <token>` |
-| `SILICONFLOW_API_KEY` | 否（按业务能力决定） | 无 | 重排/模型相关能力所需密钥 |
+| 变量名                | 必填                 | 默认值                       | 说明                                                             |
+| --------------------- | -------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| `SEARXNG_URL`         | 是                   | 无                           | SearxNG 服务地址，例如 `http://10.26.0.12:8888`                  |
+| `MCP_BIND`            | 否                   | `127.0.0.1:8000`（程序默认） | MCP HTTP 服务监听地址；容器中建议设为 `0.0.0.0:8000`             |
+| `MCP_AUTH_TOKEN`      | 否                   | 无                           | MCP 鉴权 token，设置后请求需携带 `Authorization: Bearer <token>` |
+| `SILICONFLOW_API_KEY` | 否（按业务能力决定） | 无                           | 重排/模型相关能力所需密钥                                        |
 
 ## 6. Docker Compose
 
@@ -98,16 +98,6 @@ docker logs -f searxng-mcp
 cp .env.example .env
 docker compose up -d --build
 ```
-
-为确保 `Dockerfile` 中的 BuildKit 缓存挂载（`RUN --mount=type=cache,...`）生效，建议显式启用 BuildKit：
-
-```bash
-DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose up -d --build
-```
-
-说明：
-- Docker Desktop / Docker Engine 新版本通常默认启用 BuildKit；
-- 在 CI 或老环境中，建议按上面的命令显式开启，避免缓存挂载失效。
 
 停止并移除容器：
 
@@ -143,3 +133,4 @@ docker compose logs -f
 
 - 可在网络较好的环境先构建镜像，再分发
 - 结合 CI 缓存 Docker 层与 Cargo 依赖缓存
+
