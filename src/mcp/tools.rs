@@ -48,7 +48,8 @@ impl SearchType {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct OpenSearchParams {
     pub queries: Vec<String>,
-    pub search_type: SearchType,
+    #[serde(default)]
+    pub search_type: Option<SearchType>,
     #[serde(default)]
     pub limit: Option<usize>,
 }
@@ -73,7 +74,7 @@ impl SearxngTools {
         &self,
         params: Parameters<OpenSearchParams>,
     ) -> Result<CallToolResult, McpError> {
-        let search_type = params.0.search_type;
+        let search_type = params.0.search_type.unwrap_or(SearchType::General);
         let search_type_str = search_type.as_str().to_string();
         let category = search_type.as_category();
 
@@ -199,7 +200,7 @@ impl ServerHandler for SearxngTools {
 impl SearxngTools {
     #[tool(
         name = "opensearch",
-        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；it（信息技术搜索）；science（学术搜索）。可同时搜索多个关键词"
+        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；it（信息技术搜索，）；science（学术搜索）。可同时搜索多个关键词"
     )]
     async fn opensearch(
         &self,
