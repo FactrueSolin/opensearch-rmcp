@@ -1,0 +1,5 @@
+/target
+
+# Added by git-get
+example
+*.env
