@@ -16,7 +16,7 @@
 
 ## 2) 部署教程
 
-本项目运行时依赖一个可用的 searXNG 服务地址（见 [`SEARXNG_URL`](.env.example:1)）。你可以选择本地运行（Cargo）或 Docker/Compose 部署。
+本项目运行时依赖一个可用的 searXNG 服务地址（见 [`SEARXNG_URL`](.env.example:1)）。部署流程仅包含两步：配置 `.env`，然后使用 Docker Compose 启动服务。
 
 ### 2.1 环境变量配置
 
@@ -35,29 +35,7 @@ cp .env.example .env
 | [`MCP_AUTH_TOKEN`](.env.example:3) | 否 | 启用后需要 `Authorization: Bearer <token>`（鉴权中间件见 [`auth_middleware()`](src/mcp/auth.rs:39)） |
 | [`SILICONFLOW_API_KEY`](.env.example:4) | 否 | 启用 SiliconFlow（轨迹流动）重排序能力所需密钥（读取见 [`RerankClient::new()`](src/rerank/client.rs:19)） |
 
-### 2.2 方式 A：本地运行（Cargo）
-
-1) 准备 `.env`
-
-```bash
-cp .env.example .env
-```
-
-2) 运行服务（二进制：[`searxng_mcp`](src/bin/searxng_mcp.rs:1)）
-
-```bash
-cargo run --bin searxng_mcp
-```
-
-3) 健康检查
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-健康检查路由见 [`health_check()`](src/mcp/server.rs:13)。
-
-### 2.3 方式 B：Docker Compose（推荐）
+### 2.2 Docker Compose 部署（推荐）
 
 项目已提供 Compose 编排文件 [`docker-compose.yml`](docker-compose.yml)。快速启动：
 
@@ -76,21 +54,6 @@ curl http://127.0.0.1:18001/health
 
 ```bash
 docker compose down
-```
-
-### 2.4 方式 C：Docker 单容器运行
-
-更完整的 Docker 说明请参考 [`DOCKER.md`](DOCKER.md)。下面给出最小可用示例：
-
-```bash
-docker build -t openperplexity/searxng-mcp:latest -f Dockerfile .
-
-docker run -d \
-  --name searxng-mcp \
-  --env-file .env \
-  -e MCP_BIND=0.0.0.0:8000 \
-  -p 8000:8000 \
-  openperplexity/searxng-mcp:latest
 ```
 
 ---
@@ -158,4 +121,3 @@ searXNG 集成入口见 [`SearxngClient`](src/searxng/client.rs:9)：
 4) 按相关性分数从高到低重排（排序逻辑见 [`RerankClient::rerank()`](src/rerank/client.rs:45)）
 
 重排序失败时会降级为 searXNG 原始顺序返回（见 [`SearxngClient::search()`](src/searxng/client.rs:33)）。
-
