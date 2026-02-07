@@ -19,7 +19,6 @@ pub enum SearchType {
     General,
     News,
     Images,
-    It,
     Science,
 }
 
@@ -29,7 +28,6 @@ impl SearchType {
             SearchType::General => None,
             SearchType::News => Some("news"),
             SearchType::Images => Some("images"),
-            SearchType::It => Some("it"),
             SearchType::Science => Some("science"),
         }
     }
@@ -39,7 +37,6 @@ impl SearchType {
             SearchType::General => "general",
             SearchType::News => "news",
             SearchType::Images => "images",
-            SearchType::It => "it",
             SearchType::Science => "science",
         }
     }
@@ -200,7 +197,7 @@ impl ServerHandler for SearxngTools {
 impl SearxngTools {
     #[tool(
         name = "opensearch",
-        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；it（信息技术搜索，）；science（学术搜索）。可同时搜索多个关键词"
+        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；science（学术搜索）。可同时搜索多个关键词"
     )]
     async fn opensearch(
         &self,
