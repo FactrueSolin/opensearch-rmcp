@@ -177,6 +177,7 @@ impl SearxngTools {
             }
         }
     }
+
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -187,7 +188,7 @@ impl ServerHandler for SearxngTools {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("SearxNG 搜索服务，提供 opensearch 工具，支持按 search_type 选择类别并对 queries 并发查询".to_string()),
+            instructions: Some("搜索服务，提供 opensearch 工具；opensearch 支持按 search_type 选择类别并对 queries 并发查询".to_string()),
             ..Default::default()
         }
     }

@@ -9,7 +9,10 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
 # 构建目标二进制：searxng_mcp
-RUN cargo build --release --bin searxng_mcp
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --bin searxng_mcp
 
 FROM debian:bookworm-slim AS runtime
 
