@@ -177,7 +177,6 @@ impl SearxngTools {
             }
         }
     }
-
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -198,7 +197,7 @@ impl ServerHandler for SearxngTools {
 impl SearxngTools {
     #[tool(
         name = "opensearch",
-        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；science（学术搜索）。可同时搜索多个关键词"
+        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；science（学术搜索）。可同时搜索多个关键词，在消息中标注消息来源"
     )]
     async fn opensearch(
         &self,
