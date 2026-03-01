@@ -97,7 +97,7 @@ docker compose down
 - `general`：通用搜索（不传 categories）
 - `news`：新闻
 - `images`：图片
-- `it`：信息技术
+- `videos`：视频
 - `science`：学术
 
 **返回结构**：
