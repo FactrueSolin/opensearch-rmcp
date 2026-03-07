@@ -37,7 +37,6 @@ impl SearxngClient {
         &self,
         query: &str,
         category: Option<&str>,
-        limit: usize,
     ) -> Result<SearchToolResponse> {
         let mut response = SearchToolResponse {
             query: query.to_string(),
@@ -74,13 +73,10 @@ impl SearxngClient {
             .filter_map(|item| map_result_item(category_key, item))
             .collect();
 
-        // 如果配置了重排序客户端，则在结果数量超过 limit 时使用重排序
+        // 如果配置了重排序客户端，则对结果进行重排序
         if let Some(rerank_client) = &self.rerank_client {
-            if results.len() <= limit {
-                debug!(
-                    results_count = results.len(),
-                    limit, "Skipping rerank: results count is within limit"
-                );
+            if results.is_empty() {
+                debug!("Skipping rerank: no search results");
             } else {
                 // 构造待排序文档：将 URL 与 description 组合，给 rerank 更多上下文
                 // 形如："{url} - {description}"
@@ -116,8 +112,8 @@ impl SearxngClient {
             }
         }
 
-        // 按 limit 截取结果
-        response.results = results.into_iter().take(limit).collect();
+        // 返回 searXNG 全量结果（如启用 rerank，则返回重排后的全量结果）
+        response.results = results;
         response.success = true;
         Ok(response)
     }

@@ -1,4 +1,3 @@
-use futures::future::join_all;
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -47,11 +46,9 @@ impl SearchType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct OpenSearchParams {
-    pub queries: Vec<String>,
+    pub query: String,
     #[serde(default)]
     pub search_type: Option<SearchType>,
-    #[serde(default)]
-    pub limit: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -61,8 +58,6 @@ pub struct SearxngTools {
 }
 
 impl SearxngTools {
-    const MAX_LIMIT: usize = 50;
-
     pub fn new(client: SearxngClient) -> Self {
         Self {
             client,
@@ -77,65 +72,36 @@ impl SearxngTools {
         let search_type = params.0.search_type.unwrap_or(SearchType::General);
         let search_type_str = search_type.as_str().to_string();
         let category = search_type.as_category();
+        let query = params.0.query.trim().to_string();
 
-        if params.0.queries.is_empty() {
+        if query.is_empty() {
             return Ok(Self::response_to_result(OpenSearchResponse {
                 success: false,
                 search_type: search_type_str,
                 results: Vec::new(),
-                error: Some("queries must not be empty".to_string()),
+                error: Some("query must not be empty".to_string()),
             }));
         }
 
-        let limit = params.0.limit.unwrap_or(20);
-
-        if limit == 0 {
-            return Ok(Self::response_to_result(OpenSearchResponse {
+        let query_result = match self.client.search(&query, category).await {
+            Ok(response) => QuerySearchResult {
+                query: response.query,
+                success: response.success,
+                results: response.results,
+                error: response.error,
+            },
+            Err(err) => QuerySearchResult {
+                query,
                 success: false,
-                search_type: search_type_str,
                 results: Vec::new(),
-                error: Some("limit must be greater than 0".to_string()),
-            }));
-        }
-
-        let limit = limit.min(Self::MAX_LIMIT);
-        let tasks = params.0.queries.into_iter().map(|query| {
-            let trimmed = query.trim().to_string();
-            let client = self.client.clone();
-            async move {
-                if trimmed.is_empty() {
-                    return QuerySearchResult {
-                        query: trimmed,
-                        success: false,
-                        results: Vec::new(),
-                        error: Some("query is empty".to_string()),
-                    };
-                }
-
-                match client.search(&trimmed, category, limit).await {
-                    Ok(response) => QuerySearchResult {
-                        query: response.query,
-                        success: response.success,
-                        results: response.results,
-                        error: response.error,
-                    },
-                    Err(err) => QuerySearchResult {
-                        query: trimmed,
-                        success: false,
-                        results: Vec::new(),
-                        error: Some(err.to_string()),
-                    },
-                }
+                error: Some(err.to_string()),
             }
-        });
-
-        let aggregated_results = join_all(tasks).await;
-        let success = aggregated_results.iter().any(|item| item.success);
+        };
 
         Ok(Self::response_to_result(OpenSearchResponse {
-            success,
+            success: query_result.success,
             search_type: search_type_str,
-            results: aggregated_results,
+            results: vec![query_result],
             error: None,
         }))
     }
@@ -190,7 +156,7 @@ impl ServerHandler for SearxngTools {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("搜索服务，提供 opensearch 工具；opensearch 支持按 search_type 选择类别并对 queries 并发查询".to_string()),
+            instructions: Some("搜索服务，提供 opensearch 工具；opensearch 支持按 search_type 选择类别并对单个 query 进行查询".to_string()),
             ..Default::default()
         }
     }
@@ -200,7 +166,7 @@ impl ServerHandler for SearxngTools {
 impl SearxngTools {
     #[tool(
         name = "opensearch",
-        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；videos（视频搜索）；science（学术搜索）。可同时搜索多个关键词，在消息中标注消息来源"
+        description = "搜索工具：search type 支持 general（通用搜索）；news（新闻搜索）；images（图示搜索）；videos（视频搜索）；science（学术搜索）。一次请求只接受一个 query 关键词，在消息中标注消息来源"
     )]
     async fn opensearch(
         &self,
