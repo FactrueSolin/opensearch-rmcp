@@ -6,11 +6,15 @@ use rmcp::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
+use tracing::{Instrument, info_span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::searxng::{
     client::SearxngClient,
     types::{OpenSearchResponse, QuerySearchResult},
 };
+use crate::telemetry::{key, metrics, query_hash, set_current_span_status};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
@@ -73,37 +77,91 @@ impl SearxngTools {
         let search_type_str = search_type.as_str().to_string();
         let category = search_type.as_category();
         let query = params.0.query.trim().to_string();
+        let query_len = query.len() as i64;
+        let query_hash = query_hash(&query);
+        let started_at = Instant::now();
+        let metrics = metrics();
+        let in_flight_attrs = [key("tool", "opensearch")];
+        metrics.mcp_tool_in_flight.add(1, &in_flight_attrs);
 
-        if query.is_empty() {
-            return Ok(Self::response_to_result(OpenSearchResponse {
-                success: false,
-                search_type: search_type_str,
-                results: Vec::new(),
-                error: Some("query must not be empty".to_string()),
-            }));
+        let span = info_span!(
+            "mcp.tool",
+            otel.kind = "server",
+            "mcp.tool.name" = "opensearch",
+            "mcp.search_type" = %search_type_str,
+            "mcp.query.length" = query_len,
+            "mcp.query.hash" = %query_hash,
+            "mcp.query.empty" = query.is_empty(),
+            "mcp.success" = tracing::field::Empty,
+            "mcp.result.count" = tracing::field::Empty,
+            "mcp.outcome" = tracing::field::Empty,
+        );
+
+        async move {
+            let mut outcome = "success";
+            let mut result_count = 0usize;
+
+            let response = if query.is_empty() {
+                outcome = "empty_query";
+                OpenSearchResponse {
+                    success: false,
+                    search_type: search_type_str.clone(),
+                    results: Vec::new(),
+                    error: Some("query must not be empty".to_string()),
+                }
+            } else {
+                let query_result = match self.client.search(&query, category).await {
+                    Ok(response) => QuerySearchResult {
+                        query: response.query,
+                        success: response.success,
+                        results: response.results,
+                        error: response.error,
+                    },
+                    Err(err) => {
+                        outcome = "searxng_error";
+                        QuerySearchResult {
+                            query,
+                            success: false,
+                            results: Vec::new(),
+                            error: Some(err.to_string()),
+                        }
+                    }
+                };
+
+                result_count = query_result.results.len();
+
+                OpenSearchResponse {
+                    success: query_result.success,
+                    search_type: search_type_str.clone(),
+                    results: vec![query_result],
+                    error: None,
+                }
+            };
+            let success = response.success;
+            let result = Ok(Self::response_to_result(response));
+
+            let attrs = [
+                key("tool", "opensearch"),
+                key("search_type", search_type_str.clone()),
+                key("outcome", outcome),
+            ];
+            metrics.mcp_tool_calls.add(1, &attrs);
+            metrics
+                .mcp_tool_duration_ms
+                .record(started_at.elapsed().as_secs_f64() * 1000.0, &attrs);
+            metrics.mcp_tool_in_flight.add(-1, &in_flight_attrs);
+
+            let current_span = tracing::Span::current();
+            current_span.record("mcp.success", success);
+            current_span.record("mcp.result.count", result_count as i64);
+            current_span.record("mcp.outcome", outcome);
+            current_span.set_attribute("mcp.result.count", result_count as i64);
+            set_current_span_status(success, outcome);
+
+            result
         }
-
-        let query_result = match self.client.search(&query, category).await {
-            Ok(response) => QuerySearchResult {
-                query: response.query,
-                success: response.success,
-                results: response.results,
-                error: response.error,
-            },
-            Err(err) => QuerySearchResult {
-                query,
-                success: false,
-                results: Vec::new(),
-                error: Some(err.to_string()),
-            }
-        };
-
-        Ok(Self::response_to_result(OpenSearchResponse {
-            success: query_result.success,
-            search_type: search_type_str,
-            results: vec![query_result],
-            error: None,
-        }))
+        .instrument(span)
+        .await
     }
 
     fn response_to_result(response: OpenSearchResponse) -> CallToolResult {

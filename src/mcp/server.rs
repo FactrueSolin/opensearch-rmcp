@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use axum::{Router, middleware, routing::get};
+use axum::{Router, body::Body, http::Request, middleware, response::Response, routing::get};
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
 use tokio_util::sync::CancellationToken;
+use tower_http::trace::TraceLayer;
+use tracing::Span;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use super::{
     auth::{AuthState, auth_middleware},
@@ -46,7 +49,28 @@ pub async fn serve(config: McpConfig) -> Result<()> {
 
     let app = Router::new()
         .route("/health", get(health_check))
-        .merge(mcp_router);
+        .merge(mcp_router)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<Body>| {
+                    tracing::info_span!(
+                        "mcp.http",
+                        otel.kind = "server",
+                        "http.request.method" = %request.method(),
+                        "url.path" = %request.uri().path(),
+                        "http.response.status_code" = tracing::field::Empty,
+                    )
+                })
+                .on_response(|response: &Response<Body>, _latency, span: &Span| {
+                    let status = response.status();
+                    span.record("http.response.status_code", status.as_u16() as i64);
+                    if status.is_server_error() {
+                        span.set_status(opentelemetry::trace::Status::error(status.to_string()));
+                    } else {
+                        span.set_status(opentelemetry::trace::Status::Ok);
+                    }
+                }),
+        );
 
     let listener = tokio::net::TcpListener::bind(&config.bind).await?;
     tracing::info!("MCP server listening on {}", config.bind);

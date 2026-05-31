@@ -6,6 +6,8 @@ use axum::{
 };
 use std::sync::Arc;
 
+use crate::telemetry::{key, metrics};
+
 #[derive(Clone, Debug)]
 pub struct AuthState {
     token: Option<String>,
@@ -44,6 +46,13 @@ pub async fn auth_middleware(
 ) -> Result<Response, StatusCode> {
     match extract_token(&headers) {
         Some(token) if state.is_valid(&token) => Ok(next.run(request).await),
-        _ => Err(StatusCode::UNAUTHORIZED),
+        _ => {
+            metrics().auth_failures.add(
+                1,
+                &[key("status_code", StatusCode::UNAUTHORIZED.as_u16() as i64)],
+            );
+            tracing::warn!("MCP authentication failed");
+            Err(StatusCode::UNAUTHORIZED)
+        }
     }
 }
